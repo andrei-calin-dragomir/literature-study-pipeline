@@ -25,10 +25,5 @@ print('request lasted:', end-start)
 soup = bs4.BeautifulSoup(html_content, "html.parser") # parse the content
 target_element = soup.find(string="Abstract") # find the element containing the abstract
 
-closest_elements = []
-for sibling in target_element.next_siblings[:5]:
-    closest_elements.append(sibling)
 
-# Print the closest 5 elements
-for element in closest_elements:
-    print(element)
+
