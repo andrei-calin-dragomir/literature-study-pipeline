@@ -16,7 +16,7 @@ driver = Firefox(options=firefox_options)
 def read_paper(path):
 	with open(path) as f:
 		csv_reader = csv.reader(f)
-		urls = [next(csv_reader) for _ in range(10)]
+		urls = [next(csv_reader) for _ in range(20)]
 	return urls
 
 def append_to_file(filename, strings):
@@ -28,20 +28,22 @@ def append_to_file(filename, strings):
 			file.write(string + '\n')
 
 def get_html_source(url):
-	# sleep to avoid being banned from the website
-	time.sleep(3)
-	driver.get(url) # go to the page
-	
-	# Waits until the word abstract appears in the page
-	try:
-	    # wait until form shows up
-	    wrapper = WebDriverWait(driver, 3).until(
-	      EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'bstract')]"))
-	    )
-	    # print("Element is present in the DOM now")
-	except TimeoutException:
-	    print("Element did not show up")
-	return driver.page_source
+    # sleep to avoid being banned from the website
+    time.sleep(3)
+    driver.get(url) # go to the page
+    # Waits until the word abstract appears in the page
+    try:
+        # wait until form shows up
+        wrapper = WebDriverWait(driver, 3).until(
+            EC.presence_of_element_located((By.XPATH,
+                "//*[contains(text(), 'bstract') or contains(text(), 'summary')]"))
+        )
+
+        # print("Element is present in the DOM now")
+    except TimeoutException:
+        print("Element did not show up")
+        return None
+    return driver.page_source
 
 def find_next_long_text(start_element):
     current = start_element.next_element
@@ -78,8 +80,11 @@ def get_abstract(html_source):
 urls = read_paper('data/papers.csv')
 
 for url in urls:
-	print(url, '\n', '\n')
-	html_source = get_html_source(url[-1])
-	abstract = get_abstract(html_source)
-	for element in abstract:
-		append_to_file(f'{url[0]}-{url[1]}', abstract)
+    print(url, '\n', '\n')
+    html_source = get_html_source(url[-1])
+    # goes to the next paper if the abstract is not found
+    if not html_source:
+        continue
+    abstract = get_abstract(html_source)
+    for element in abstract:
+        append_to_file(f'{url[0]}-{url[1]}', abstract)
