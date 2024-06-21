@@ -44,17 +44,19 @@ poetry shell
 Execute the main script with your study design file and dblp of choice:
 
 ```bash
-python main.py --study_design input/study_design.json --dblp  dblp27052024.xml
+python main.py --study_design input/study_design.json --dblp dblp27052024.xml
 ```
 
 The pipeline will process the literature and provide you with a selection of papers filtered based on your inclusion/exclusion criteria.
 
 **NOTE** You can specify the number of papers to be assessed by using the `--batch` flag followed by the desired number. Otherwise the pipeline will attempt processing all papers extracted.
+
 **NOTE** You can resume a pipeline process that was stopped midway by setting the `--resume` flag followed by the directory name in results that you want to resume.
+
 **NOTE** You can let the pipeline run on its own by adding the `--auto` flag. (It will not ask for your confirmation on each step)
 
 ### 3. Output
 
-The outputs of each pipeline phase will be found in the `results` directory.
+The outputs of each run of the pipeline will be found in the `results` directory.
 
-#TODO Add a jupyter notebook to visualize the contents from the results easier.
+You can find some demo interpretations of a run's results through the `notebook.ipynb` Jupyter notebook.

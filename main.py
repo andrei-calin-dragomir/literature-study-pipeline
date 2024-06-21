@@ -5,8 +5,7 @@ import pandas as pd
 from datetime import datetime
 from abstract_scraper import extract_abstracts_from_papers
 from paper_scraper import extract_dblp_papers
-from filter_papers_on_criteria import assess_abstracts
-
+from criteria_assessment import assess_abstracts
 
 def user_confirmation(prompt, auto=False):
     if auto:
@@ -21,20 +20,12 @@ def user_confirmation(prompt, auto=False):
         else:
             print("Unexpected answer. Try again.")
 
-
-def count_directories_with_prefix(directory_path: str, prefix: str) -> int:
-    return sum(
-        os.path.isdir(os.path.join(directory_path, item)) and item.startswith(prefix)
-        for item in os.listdir(directory_path)
-    )
-
-
-def load_study_design(json_file_path) -> dict:
+def load_json_data(json_file_path) -> dict:
     try:
         with open(json_file_path, 'r') as file:
             return json.load(file)
     except FileNotFoundError:
-        print(f"Study design file not found: {json_file_path}")
+        print(f"JSON file not found: {json_file_path}")
         exit(0)
     except json.JSONDecodeError:
         print(f"Error decoding JSON from file: {json_file_path}")
@@ -56,25 +47,6 @@ def create_new_file(file_name, target_directory):
     
     return file_path
 
-def prepare_results_directory(results_directory, resume=None):
-    if resume:
-        results_directory = os.path.join(results_directory, resume)
-    else:
-        current_date = datetime.datetime.now().strftime("%d%m%Y")
-        results_directory = os.path.join(
-            results_directory, f"{current_date}_{count_directories_with_prefix(results_directory, current_date)}"
-        )
-    os.makedirs(results_directory, exist_ok=True)
-    return results_directory
-
-
-def handle_dblp_file(dblp_xml_path):
-    if not os.path.exists(dblp_xml_path):
-        print(f"Dblp file not found on path {dblp_xml_path}")
-        exit(0)
-    print("Running with the dblp database provided.")
-
-
 def main():
     try:
         parser = argparse.ArgumentParser(description="Process the study design pipeline with various options.")
@@ -86,68 +58,88 @@ def main():
 
         args = parser.parse_args()
 
-        results_directory = prepare_results_directory('./results/', args.resume)
+        # Step 0: Parse run arguments
+        if args.resume:
+            if args.study_design or args.dblp:
+                print('You must start a fresh run if you do not want to use the same study design/dblp file as the previous run')
+                exit(0)
+        else:
+            if not args.study_design or not args.dblp:
+                print('For a new run, both a study as well as a dblp file need to be specified')
+                exit(0)
+            elif not os.path.exists(args.study_design):
+                print(f"Study design file not found on path {args.study_design}")
+                exit(0)
+            elif not os.path.exists(args.dblp):
+                print(f"Dblp file not found on path {args.dblp}")
+                exit(0)
+
+        # Step 1: Setup configuration of the current run
+        current_date = datetime.datetime.now().strftime("%d%m%Y")
+        current_run_index = sum(os.path.isdir(os.path.join(results_directory, item)) and item.startswith(current_date) for item in os.listdir(results_directory))
+        
+        results_directory = os.path.join('./results/', args.resume if args.resume else f"{current_date}_{current_run_index}")
+        os.makedirs(results_directory, exist_ok=True)
 
         run_summary = {}
-        old_run_summary = {}
-        with open(os.path.join(results_directory, 'run_summary.json'), 'r') as file:
-                old_run_summary = json.load(file)
         run_summary['run_start'] = datetime.now()
+        old_run_summary = load_json_data(os.path.join(results_directory, 'run_summary.json')) if args.resume else {}
 
-        # Step 1: Load study design of the current run
-        if args.resume and not args.study_design:
-            study_design = {}
-            study_design = old_run_summary['study_design']
-        else:
-            study_design = load_study_design(args.study_design)
-        
-        run_summary['study_design'] = study_design
-        print(f"Loaded study design: {args.study_design}")
+        run_summary['batch_size'] = args.batch if args.batch else old_run_summary['batch_size'] if args.resume else None
+        run_summary['study_design'] = old_run_summary['study_design'] if args.resume else load_json_data(args.study_design)
+        run_summary['dblp_file'] = old_run_summary['dblp'] if args.resume else args.dblp
+        run_summary['dblp_version'] = old_run_summary['dblp'] if args.resume else args.dblp if args.dblp.rfind('dblp') == -1 else args.dblp[args.dblp.rfind('dblp'):]
+
+        print(f"Loaded study design: {run_summary['study_design']}")
+        print(f"Running with this dblp: {run_summary['dblp_version']}")
+        print(f"Attempting to satisfy this batch size: {run_summary['batch_size']}")
+
         
         # Step 2: Paper extraction
         print("Next Step: Paper Extraction")
         if not user_confirmation("Proceed with this step?", args.auto):
             exit(0)
-
-        papers_file = os.path.join(results_directory, 'papers.csv') if args.resume else create_new_file('papers.csv', results_directory)
-        
-
-        if args.resume:
-            run_summary['dblp'] = old_run_summary['dblp']
-        else:
-            if args.dblp:
-                handle_dblp_file(args.dblp)
-                run_summary['dblp'] = args.dblp if args.dblp.rfind('dblp') == -1 else args.dblp[args.dblp.rfind('dblp'):]
-            else:
-                print("You need to specify a dblp.xml file to be used.")
-                exit(0)
-            extract_dblp_papers(args.dblp, study_design['venues'], study_design['year_min'], study_design['year_max'], study_design['search_words'], papers_file)
             
+        papers_file = os.path.join(results_directory, 'papers.csv') if args.resume else create_new_file('papers.csv', results_directory)
         number_of_papers = len(pd.read_csv(papers_file))
+
+        # If number of papers does not satisfy batch size
+        if number_of_papers < run_summary['batch_size']:
+            extract_dblp_papers(run_summary['dblp_file'], run_summary['study_design']['venues'], 
+                                run_summary['study_design']['year_min'], run_summary['study_design']['year_max'], 
+                                run_summary['study_design']['search_words'], papers_file, 
+                                run_summary['batch_size'] - number_of_papers, 0 if number_of_papers == 0 else number_of_papers)
+        
+        # If number of papers still does not satisfy batch size
+        number_of_papers = len(pd.read_csv(papers_file))
+        if number_of_papers < run_summary['batch_size']:
+            print(f'Number of papers collected does not satisfy desired batch size ({run_summary['batch_size']}) found only {number_of_papers}')
+            if not user_confirmation("Proceed with this selection?", args.auto):
+                return
+        
+        # Update batch size based on number of papers and desired batch size
+        if not run_summary['batch_size'] or number_of_papers <= run_summary['batch_size']: run_summary['batch_size'] = number_of_papers
+
         run_summary['papers_collected'] = number_of_papers
         print(f"Total papers collected: {number_of_papers}")
 
         # Step 3: Abstracts extraction
         print("Next Step: Abstracts Extraction")
         if not user_confirmation("Proceed with this step?", args.auto):
-            exit(0)
+            return
 
         abstracts_file = os.path.join(results_directory, 'abstracts.csv') if args.resume else create_new_file('abstracts.csv', results_directory)
         abstracts_file_size = len(pd.read_csv(abstracts_file))
 
-        if args.resume and abstracts_file_size != 0:
-            if args.batch:
-                if abstracts_file_size < args.batch:
-                    print("Abstracts found but insufficient. Resuming previous abstract extraction...")
-                    extract_abstracts_from_papers(papers_file, abstracts_file,  args.batch, abstracts_file_size)
-                else:
-                    print("Abstracts found are sufficient.")
-            elif abstracts_file_size < number_of_papers:
-                print("Abstracts found but incomplete. Resuming previous abstract extraction...")
-                extract_abstracts_from_papers(papers_file, abstracts_file, number_of_papers, abstracts_file_size)
+        # If number of abstracts does not satisfy batch_size
+        if abstracts_file_size < run_summary['batch_size']:
+            if abstracts_file_size != 0:
+                print('Abstracts found but incomplete. Resuming previous abstract extraction...')
+            else:
+                print('No abstracts found. Starting new abstract extraction...')
+            extract_abstracts_from_papers(papers_file, abstracts_file, run_summary['batch_size'], abstracts_file_size)
         else:
-            extract_abstracts_from_papers(papers_file, abstracts_file, 
-                                          args.batch if args.batch else number_of_papers, abstracts_file_size)
+            print("Abstracts found are sufficient.")
 
         number_of_abstracts = len(pd.read_csv(abstracts_file))
         run_summary['abstracts_collected'] = number_of_abstracts
@@ -161,21 +153,15 @@ def main():
         criteria_file = os.path.join(results_directory, 'criteria_assessments.csv') if args.resume else create_new_file('criteria_assessments.csv', results_directory)
         criteria_file_size = len(pd.read_csv(criteria_file))
             
-        if args.resume and criteria_file_size != 0:
-            if args.batch:
-                if criteria_file_size < args.batch:
-                    print("Assessments found but insufficient. Resuming criteria assessments...")
-                    assess_abstracts(study_design['inclusion_criteria'], study_design['exclusion_criteria'], 
-                                     abstracts_file, criteria_file, args.batch, criteria_file_size)
-                else:
-                    print("Assessments found are sufficient.")
-            elif criteria_file_size < number_of_papers:
-                print("Abstracts found but incomplete. Resuming previous abstract extraction...")
-                assess_abstracts(study_design['inclusion_criteria'], study_design['exclusion_criteria'], 
-                                 abstracts_file, criteria_file, number_of_papers, criteria_file_size)
+        if criteria_file_size < run_summary['batch_size']:
+            if criteria_file_size != 0:
+                print("Assessments found but incomplete. Resuming previous criteria assessments process...")
+            else:
+                print('No criteria assessments found. Starting new criteria assessments process...')
+            assess_abstracts(run_summary['study_design']['inclusion_criteria'], run_summary['study_design']['exclusion_criteria'], 
+                                abstracts_file, criteria_file, run_summary['batch_size'], criteria_file_size)
         else:
-            assess_abstracts(study_design['inclusion_criteria'], study_design['exclusion_criteria'], abstracts_file, 
-                             args.batch if args.batch else number_of_papers, criteria_file)
+            print("Criteria assessments found are sufficient.")
         
         number_of_criteria_assessments = len(pd.read_csv(abstracts_file))
         run_summary['criteria_assessments'] = number_of_criteria_assessments
@@ -185,6 +171,7 @@ def main():
         print(e)
     finally:
         run_summary['run_end'] = datetime.now()
+        print(f'Process finished/terminated. This run took: {run_summary['run_start'] - run_summary['run_end']}')
         with open(os.path.join(results_directory, 'run_summary.json'), 'w') as run_summary_file:
                 json.dump(run_summary, run_summary_file, indent=4)
 

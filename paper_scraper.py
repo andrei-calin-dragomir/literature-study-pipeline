@@ -1,4 +1,3 @@
-import os
 import csv
 from lxml import etree
 from solve_cnf import solve_cnf
@@ -19,7 +18,7 @@ def iterate_xml(xmlfile):
             start_tag = None
             root.clear()
 
-def extract_dblp_papers(dblp_xml, venues, year_min, year_max, search_words, results_file):
+def extract_dblp_papers(dblp_xml, venues, year_min, year_max, search_words, results_file, batch_size, starting_point=0):
     hits = 0
     search_query = " AND ".join(search_words)
     
@@ -29,7 +28,7 @@ def extract_dblp_papers(dblp_xml, venues, year_min, year_max, search_words, resu
         writer.writeheader()
         
         # Parse all entries in the DBLP database.
-        for dblp_entry in iterate_xml(dblp_xml):
+        for dblp_entry in enumerate(iterate_xml(dblp_xml)[starting_point:batch_size]):
             key = dblp_entry.get('key')
             try:
                 if (key.startswith(venues) and

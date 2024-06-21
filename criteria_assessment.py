@@ -1,7 +1,6 @@
 import os
 import csv
 import json
-import pandas as pd
 from openai import OpenAI
 
 # Replace with your OpenAI API key
