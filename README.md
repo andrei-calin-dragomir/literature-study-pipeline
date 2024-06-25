@@ -58,5 +58,5 @@ The pipeline will process the literature and provide you with a selection of pap
 ### 3. Output
 
 The outputs of each run of the pipeline will be found in the `results` directory.
-
-You can find some demo interpretations of a run's results through the `notebook.ipynb` Jupyter notebook.
+The output of your current run will be named based on the current date and the experiment number of today (`<date>_<number>/`).
+In this directory, you will find the output data separated per each pipeline phase along with an experiment overview.
