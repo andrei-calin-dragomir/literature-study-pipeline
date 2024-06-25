@@ -49,11 +49,11 @@ python main.py --study_design input/study_design.json --dblp dblp27052024.xml
 
 The pipeline will process the literature and provide you with a selection of papers filtered based on your inclusion/exclusion criteria.
 
-**NOTE** You can specify the number of papers to be assessed by using the `--batch` flag followed by the desired number. Otherwise the pipeline will attempt processing all papers extracted.
+- **NOTE** You can specify the number of papers to be assessed by using the `--batch` flag followed by the desired number. Otherwise the pipeline will attempt processing all papers extracted.
 
-**NOTE** You can resume a pipeline process that was stopped midway by setting the `--resume` flag followed by the directory name in results that you want to resume.
+- **NOTE** You can resume a pipeline process that was stopped midway by setting the `--resume` flag followed by the directory name in results that you want to resume.
 
-**NOTE** You can let the pipeline run on its own by adding the `--auto` flag. (It will not ask for your confirmation on each step)
+- **NOTE** You can let the pipeline run on its own by adding the `--auto` flag. (It will not ask for your confirmation on each step)
 
 ### 3. Output
 
