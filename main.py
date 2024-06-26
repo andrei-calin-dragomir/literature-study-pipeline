@@ -63,6 +63,7 @@ def main():
 
         args = parser.parse_args()
         results_directory = './results/'
+        os.makedirs(results_directory, exist_ok=True)
 
         # Step 0: Parse run arguments
         if args.resume:
