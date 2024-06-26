@@ -83,41 +83,34 @@ def request_assessment(abstract, inclusion_criteria, exclusion_criteria):
     # Return the result
     return response.choices[0].message.content
 
-def assess_abstracts(inclusion_criteria, exclusion_criteria, input_csv, output_csv, total_runs, starting_point=0) -> int:
-    # Ensure the results directory exists
-    os.makedirs(os.path.dirname(output_csv), exist_ok=True)
+def assess_abstracts(inclusion_criteria, exclusion_criteria, input_csv, output_csv, total_runs, starting_point=0):
+    assessments_processed = 0
     # Initialize the language model pipeline
     try:
         with open(input_csv, newline='', encoding='utf-8') as input_file, open(output_csv, 'a', newline='', encoding='utf-8') as output_file:
             csv_reader = csv.reader(input_file)
-            csv_writer = csv.writer(output_file)
-
             rows = list(csv_reader)
+            csv_writer = csv.DictWriter(output_file, fieldnames=rows[0])
 
-            for index, row in enumerate(rows[starting_point:total_runs], starting_point):
+            # 1 starting index for the header
+            for _, row in enumerate(rows[starting_point if starting_point > 0 else 1:total_runs], starting_point):
+                paper_index = row[0]
                 abstract = row[1]
 
-                row = [index]
-                if abstract != None and abstract != '?':
-                    results = request_assessment(abstract, inclusion_criteria, exclusion_criteria)
-                    results_data = json.loads(results)
-                    
-                    for result in results_data['inclusion_criteria_assessments']:
-                        row.append(result['assessment'])
-                        row.append(result['value'])
+                results = request_assessment(abstract, inclusion_criteria, exclusion_criteria)
+                results_data = json.loads(results)
 
-                    for result in results_data['exclusion_criteria_assessments']:
-                        row.append(result['assessment'])
-                        row.append(result['value'])
-                    
-                    row.append(results_data['conclusion'])
-                else:
-                    row.append(abstract)
-                    
-                csv_writer.writerow(row)
-
-            return rows.__len__()
-
+                # Write the result to the CSV file
+                csv_writer.writerow({
+                    'index': paper_index,
+                    'inclusion_results': [result['value'] for result in results_data['inclusion_criteria_assessments']],
+                    'exclusion_results': [result['value'] for result in results_data['exclusion_criteria_assessments']],
+                    'inclusion_comments': [result['assessment'] for result in results_data['inclusion_criteria_assessments']],
+                    'exclusion_comments': [result['assessment'] for result in results_data['exclusion_criteria_assessments']],
+                    'conclusion': results_data['conclusion']
+                })
+                assessments_processed += 1
+            return assessments_processed
     except OSError or Exception as e:
         raise(f"Error during processing:{e}")
 

@@ -18,7 +18,7 @@ def iterate_xml(xmlfile):
             start_tag = None
             root.clear()
 
-def extract_dblp_papers(dblp_xml, venues, year_min, year_max, search_words, results_file, batch_size, starting_point=0):
+def extract_dblp_papers(dblp_xml, venues, year_min, year_max, search_words, results_file):
     hits = 0
     search_query = " AND ".join(search_words)
     
@@ -26,14 +26,14 @@ def extract_dblp_papers(dblp_xml, venues, year_min, year_max, search_words, resu
         fieldnames = ['hit', 'title', 'year', 'authors', 'key', 'ee']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
-        
+
         # Parse all entries in the DBLP database.
-        for dblp_entry in enumerate(iterate_xml(dblp_xml)[starting_point:batch_size]):
+        for dblp_entry in iterate_xml(dblp_xml):
             key = dblp_entry.get('key')
             try:
-                if (key.startswith(venues) and
-                    int(dblp_entry.find('year').text) >= year_min and
-                    int(dblp_entry.find('year').text) <= year_max):
+                if (key.startswith(tuple(venues)) and
+                    int(dblp_entry.find('year').text) >= int(year_min) and
+                    int(dblp_entry.find('year').text) <= int(year_max)):
                     
                     title = ''.join(dblp_entry.find('title').itertext())
                     
@@ -56,7 +56,7 @@ def extract_dblp_papers(dblp_xml, venues, year_min, year_max, search_words, resu
                         })
                         
                         hits += 1
-            except AttributeError:
-                pass
+            except AttributeError as e:
+                print(e)
     
     return hits

@@ -18,7 +18,8 @@
         "Methods presented are orchestrating VMs or containers deployed within VMs",
         "The method does not produce policies that optimize performance resource-wise"
     ],
-    "year_range": "2014-2024",
+    "year_min": "2014",
+    "year_max": "2024",
     "search_words": [
         "(microservice OR service OR container OR distributed OR kubernetes OR docker)",
         "(cluster OR orchestrat OR migrat OR scal OR load OR balanc)",

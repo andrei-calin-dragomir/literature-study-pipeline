@@ -36,6 +36,8 @@ _(You can download it from [here](https://dblp.uni-trier.de/xml/dblp.xml.gz))_
 
 ### 2. Running the Pipeline
 
+First add your OpenAI API key in the `.env` file.
+
 **NOTE** Run the experiment in the poetry shell: 
 ```bash
 poetry shell
