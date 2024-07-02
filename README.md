@@ -46,7 +46,7 @@ poetry shell
 Execute the main script with your study design file and dblp of choice:
 
 ```bash
-python main.py --study_design input/study_design.json --dblp dblp27052024.xml
+python main.py --study_design study_design.json --dblp dblp27052024.xml
 ```
 
 The pipeline will process the literature and provide you with a selection of papers filtered based on your inclusion/exclusion criteria.

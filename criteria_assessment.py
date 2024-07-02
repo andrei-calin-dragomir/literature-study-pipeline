@@ -5,7 +5,7 @@ from openai import OpenAI
 
 # Replace with your OpenAI API key
 client = OpenAI(
-    api_key=''
+    api_key=os.getenv('OPENAI_API_KEY')
 )
 
 json_assessment_schema : json = {
