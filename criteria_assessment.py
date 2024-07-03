@@ -90,7 +90,7 @@ def assess_abstracts(inclusion_criteria, exclusion_criteria, input_csv, output_c
         with open(input_csv, newline='', encoding='utf-8') as input_file, open(output_csv, 'a', newline='', encoding='utf-8') as output_file:
             csv_reader = csv.reader(input_file)
             rows = list(csv_reader)
-            csv_writer = csv.DictWriter(output_file, fieldnames=rows[0])
+            csv_writer = csv.DictWriter(output_file, fieldnames=['index','inclusion_results','exclusion_results','inclusion_comments','exclusion_comments','conclusion'])
 
             # 1 starting index for the header
             for _, row in enumerate(rows[starting_point if starting_point > 0 else 1:total_runs], starting_point):

@@ -9,7 +9,7 @@ from selenium.webdriver import Firefox
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, InvalidArgumentException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
@@ -25,11 +25,11 @@ def read_paper(path):
     return urls
 
 def get_html_source(url):
-    # sleep to avoid being banned from the website
-    time.sleep(3)
-    driver.get(url) # go to the page
-    # Waits until the word abstract appears in the page
     try:
+        # sleep to avoid being banned from the website
+        time.sleep(3)
+        driver.get(url) # go to the page
+        # Waits until the word abstract appears in the page
         # wait until form shows up
         wrapper = WebDriverWait(driver, 3).until(
             EC.presence_of_element_located((By.XPATH,
@@ -37,10 +37,10 @@ def get_html_source(url):
         )
 
         # print("Element is present in the DOM now")
-    except TimeoutException:
-        print("Element did not show up")
+        return driver.page_source
+    except Exception as e:
+        print(e)
         return None
-    return driver.page_source
 
 # Function to get the first sibling with large text
 def get_first_large_text_sibling(heading):
@@ -86,7 +86,7 @@ def extract_abstracts_from_papers(input_csv, output_csv, total_runs, starting_po
         with open(input_csv, newline='', encoding='utf-8') as input_file, open(output_csv, 'a', newline='', encoding='utf-8') as output_file:
             csv_reader = csv.reader(input_file)
             rows = list(csv_reader)
-            csv_writer = csv.DictWriter(output_file, fieldnames=rows[0])
+            csv_writer = csv.DictWriter(output_file, fieldnames=['index','abstract'])
 
             # 1 starting index for the header
             for index, row in enumerate(rows[starting_point if starting_point > 0 else 1:total_runs], starting_point):
@@ -94,7 +94,7 @@ def extract_abstracts_from_papers(input_csv, output_csv, total_runs, starting_po
                 html_source = get_html_source(link)
                 # goes to the next paper if the abstract is not found
                 if not html_source:
-                    csv_writer.writerow([index, None])
+                    csv_writer.writerow({'index': None})
                     continue
                 abstract = get_abstract(html_source)
                 if abstract:

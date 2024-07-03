@@ -114,7 +114,7 @@ def main():
         if args.resume: 
             papers_file = os.path.join(results_directory, 'papers.csv') 
         else: 
-            create_new_results_file('papers.csv', results_directory, ['hit','title','year','authors','key','ee'])
+            papers_file = create_new_results_file('papers.csv', results_directory, ['hit','title','year','authors','key','ee'])
         number_of_papers = old_run_summary['papers_collected'] if args.resume else 0
 
         # If number of papers does not satisfy batch size
@@ -140,7 +140,7 @@ def main():
         if args.resume:
             abstracts_file = os.path.join(results_directory, 'abstracts.csv') 
         else:
-            create_new_results_file('abstracts.csv', results_directory, ['index','abstract'])
+            abstracts_file = create_new_results_file('abstracts.csv', results_directory, ['index','abstract'])
 
         abstracts_file_size = old_run_summary['abstracts_extracted'] if args.resume else 0
 
@@ -163,7 +163,7 @@ def main():
         if args.resume:
              criteria_file = os.path.join(results_directory, 'criteria_assessments.csv') 
         else:
-            create_new_results_file('criteria_assessments.csv', results_directory,
+            criteria_file = create_new_results_file('criteria_assessments.csv', results_directory,
                                     ['index','inclusion_results','exclusion_results','inclusion_comments','exclusion_comments','conclusion'])
         criteria_file_size = old_run_summary['assessments_processed'] if args.resume else 0
             
