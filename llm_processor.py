@@ -2,13 +2,9 @@ import os
 import csv
 import json
 from openai import OpenAI
+from utils.file_io import load_json_data
 
-# Replace with your OpenAI API key
-client = OpenAI(
-    api_key=os.getenv('OPENAI_API_KEY')
-)
-
-json_assessment_schema : json = {
+CRITERIA_ASSESSMENT_SCHEMA : json = {
     "type": "object",
     "properties": {
         "inclusion_criteria_assessments": {
@@ -53,66 +49,58 @@ json_assessment_schema : json = {
     "required": ["inclusion_criteria_assessments", "exclusion_criteria_assessments", "conclusion"]
 }
 
-def request_assessment(abstract, inclusion_criteria, exclusion_criteria):
-    # Construct the prompt
-    inclusion_criteria_text = "\n".join([f"{i+1}. {criteria}" for i, criteria in enumerate(inclusion_criteria)])
-    exclusion_criteria_text = "\n".join([f"{i+1}. {criteria}" for i, criteria in enumerate(exclusion_criteria)])
-    
-    prompt = f"""
-    Given the user provided abstract, assess whether the abstract meets the following inclusion and exclusion criteria:
+class LLM_Processor:
+    def __init__(self, study_design, api_key):
+        # Replace with your OpenAI API key
+        self.client = OpenAI(
+            api_key=api_key
+        )
+        self.study_design = study_design
+        
+    def request_criteria_assessment(self, content):
+            inclusion_criteria = self.study_design['inclusion_criteria']
+            exclusion_criteria = self.study_design['exclusion_criteria']
 
-    Inclusion Criteria:
-    {inclusion_criteria_text}
+            # Construct the prompt
+            inclusion_criteria_text = "\n".join([f"{i+1}. {criteria}" for i, criteria in enumerate(inclusion_criteria)])
+            exclusion_criteria_text = "\n".join([f"{i+1}. {criteria}" for i, criteria in enumerate(exclusion_criteria)])
+            
+            prompt = f"""
+            You are a text parser that receives sections extracted from research papers.
 
-    Exclusion Criteria:
-    {exclusion_criteria_text}
+            Given the user provided section, assess whether the section meets the following inclusion and exclusion criteria:
 
-    Provide the assessment in JSON format following this schema:
-    {json_assessment_schema}
-    """
+            Inclusion Criteria:
+            {inclusion_criteria_text}
 
-    # Call the OpenAI API to evaluate the abstract
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        response_format={ "type": "json_object" },
-        messages=[{"role": "system", "content": prompt},
-                  {"role": "user", "content": abstract}],
-        # max_tokens=300
-    )
+            Exclusion Criteria:
+            {exclusion_criteria_text}
 
-    # Return the result
-    return response.choices[0].message.content
+            Provide the assessment in JSON format following this schema:
+            {CRITERIA_ASSESSMENT_SCHEMA}
+            """
 
-def assess_abstracts(inclusion_criteria, exclusion_criteria, input_csv, output_csv, total_runs, starting_point=0):
-    assessments_processed = 0
-    # Initialize the language model pipeline
-    try:
-        with open(input_csv, newline='', encoding='utf-8') as input_file, open(output_csv, 'a', newline='', encoding='utf-8') as output_file:
-            csv_reader = csv.reader(input_file)
-            rows = list(csv_reader)
-            csv_writer = csv.DictWriter(output_file, fieldnames=['index','inclusion_results','exclusion_results','inclusion_comments','exclusion_comments','conclusion'])
+            # Call the OpenAI API to evaluate the abstract
+            response = self.client.chat.completions.create(
+                model="gpt-4o",
+                response_format={ "type": "json_object" },
+                messages=[{"role": "system", "content": prompt},
+                        {"role": "user", "content": content}],
+                # max_tokens=300
+            )
 
-            # 1 starting index for the header
-            for _, row in enumerate(rows[starting_point if starting_point > 0 else 1:total_runs], starting_point):
-                paper_index = row[0]
-                abstract = row[1]
-
-                results = request_assessment(abstract, inclusion_criteria, exclusion_criteria)
-                results_data = json.loads(results)
-
-                # Write the result to the CSV file
-                csv_writer.writerow({
-                    'index': paper_index,
-                    'inclusion_results': [result['value'] for result in results_data['inclusion_criteria_assessments']],
-                    'exclusion_results': [result['value'] for result in results_data['exclusion_criteria_assessments']],
-                    'inclusion_comments': [result['assessment'] for result in results_data['inclusion_criteria_assessments']],
-                    'exclusion_comments': [result['assessment'] for result in results_data['exclusion_criteria_assessments']],
-                    'conclusion': results_data['conclusion']
-                })
-                assessments_processed += 1
-            return assessments_processed
-    except OSError or Exception as e:
-        raise(f"Error during processing:{e}")
+            response_data = load_json_data(response.choices[0].message.content, CRITERIA_ASSESSMENT_SCHEMA)
+            
+            if response_data:
+                return {
+                        'inclusion_results': [bool(result['value']) for result in response_data['inclusion_criteria_assessments']],
+                        'exclusion_results': [bool(result['value']) for result in response_data['exclusion_criteria_assessments']],
+                        'inclusion_comments': [result['assessment'] for result in response_data['inclusion_criteria_assessments']],
+                        'exclusion_comments': [result['assessment'] for result in response_data['exclusion_criteria_assessments']],
+                        'conclusion': response_data['conclusion']
+                }
+            else:
+                return None 
 
 if __name__ == "__main__":
     # Example usage
@@ -132,7 +120,12 @@ if __name__ == "__main__":
         "The method does not produce policies that optimize performance resource-wise"
     ]
 
+    processor = LLM_Processor({
+        'inclusion_criteria' : inclusion_criteria,
+        'exclusion_criteria' : exclusion_criteria
+    })
+
     # Call the function
-    # result = request_assessment(abstract, inclusion_criteria, exclusion_criteria)
-    result = assess_abstracts(inclusion_criteria, exclusion_criteria)
+    result = processor.request_criteria_assessment(abstract)
+
     print(result)

@@ -18,15 +18,6 @@ def solve_and(test_string: str, boolean_expression: str):
 		literal.strip().lower() in test_string.lower() for literal in literals
 	)
 
-def get_text_inside_parens(text: str) -> list:
-	"""
-	Function that extracts the text within parentheses from a string
-	@return: a list in which the elements correspond to the text
-	previously in parentheses
-	"""
-	matches = re.findall(r'\(([^)]+)\)', text)
-	return list(map(str.strip, matches))
-
 def solve_cnf(test_string: str, boolean_expression: str):
 	"""
 	Function that solves boolean expressions in Conjunctive Normal Form (CNF)
@@ -40,3 +31,21 @@ def solve_cnf(test_string: str, boolean_expression: str):
 			boolean_expression = boolean_expression.replace(f'({x})', '')
 		return solve_and(test_string, boolean_expression)
 	return False
+
+def get_text_inside_parens(text: str) -> list:
+	"""
+	Function that extracts the text within parentheses from a string
+	@return: a list in which the elements correspond to the text
+	previously in parentheses
+	"""
+	matches = re.findall(r'\(([^)]+)\)', text)
+	return list(map(str.strip, matches))
+
+def extract_doi_from_url(url):
+    # Regular expression to match the DOI pattern
+    doi_pattern = r'10\.\d{4,9}/[-._;()/:A-Z0-9]+'
+    match = re.search(doi_pattern, url, re.IGNORECASE)
+    if match:
+        return match.group(0)
+    else:
+        return None

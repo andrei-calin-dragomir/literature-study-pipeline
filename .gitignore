@@ -1,5 +1,4 @@
-*.xml
-.env
+data/
 results/
+.env
 .venv
-__*

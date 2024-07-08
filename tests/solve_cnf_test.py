@@ -2,7 +2,7 @@ import unittest
 import pandas as pd
 import sys
 sys.path.append('../')
-import solve_cnf as scf
+import utils.text_parsing as scf
 
 class SolveCNFTest(unittest.TestCase):
 	def test_text_inside_parens_single_string(self):
