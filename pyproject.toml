@@ -14,9 +14,10 @@ pandas = "^2.2.2"
 requests = "^2.32.3"
 selenium = "^4.22.0"
 python-dotenv = "^1.0.1"
-aspose-pdf = "^24.6.0"
 jsonschema = "^4.22.0"
 semanticscholar = "^0.8.2"
+pydantic = "^2.8.2"
+sqlalchemy = "^2.0.31"
 
 [build-system]
 requires = ["poetry-core"]
