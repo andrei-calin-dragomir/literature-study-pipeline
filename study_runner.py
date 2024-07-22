@@ -28,6 +28,7 @@ class StudyRunner:
             study=self.study,
             **validate_json(study_input_path, os.path.join('schemas', 'study_input_schema.json'))
         )
+        self.db.session.add(self.study_input)
 
         self.paper_collector = Factory(dblp_path, self.study_input)
     
