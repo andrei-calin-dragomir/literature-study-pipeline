@@ -19,46 +19,71 @@ cd literature-study-pipeline
 
 Install the project using Poetry:
 ```bash
-# If not installed previously
-pip install poetry
+pip install poetry #If not installed previously
 
 poetry install
 ```
 
 ## Usage
-### 1. Defining a Literature Study Design
+### 1. Required Inputs
 
-Create a study design file (e.g., `study_design.json`):
-Save this file in the project directory.
+#### Study
+Create a study file (e.g., `study_input.json`) with the following entries:
+| Fields                        | Type       | Description                                                 | Requirement |
+|-------------------------------|------------|-------------------------------------------------------------|-------------|
+| study_name                    | str        | The name of the study.                                      |**MANDATORY**|
+| inclusion_criteria            | [str]      | Criteria for including a paper in the study.                |**MANDATORY**|
+| exclusion_criteria            | [str]      | Criteria for excluding a paper from the study.              |**MANDATORY**|
+| year_min                      | int        | Earliest year of publication for the papers to be included. |**MANDATORY**|
+| year_max                      | int        | Latest year of publication for the papers to be included.   |**MANDATORY**|
+| search_word_groups            | [str]      | Search term sets used to find relevant papers.              |**MANDATORY**|
+| research_goal                 | str        | The primary objective of the study.                         | OPTIONAL    |
+| research_questions            | [str]      | Specific research questions the study aims to address.      | OPTIONAL    |
+| accepted_venue_types          | [str]      | Accepted venue types (as codes). E.g. `conf` or `journals`  | OPTIONAL    |
+| venue_rank_threshold          | str        | Minimum acceptable rank of the publication venues. E.g. `B` | OPTIONAL    |
+| manually_accepted_venue_codes | [str]      | Manually accepted venues E.g. `conf/ipccc`                  | OPTIONAL    |
 
+
+#### DBLP Source
 Provide a copy of a `dblp.xml` file to the project's directory
 _(You can download it from [here](https://dblp.uni-trier.de/xml/dblp.xml.gz))_
 
 ### 2. Running the Pipeline
 
-First add your OpenAI API key in the `.env` file.
+Add your OpenAI API key in the `.env` file.
 
 **NOTE** Run the experiment in the poetry shell: 
 ```bash
 poetry shell
 ```
 
-Execute the main script with your study design file and dblp of choice:
+Execute the main script with your study file and dblp of choice:
 
 ```bash
-python main.py --study_design_path study_design.json --dblp_path dblp27052024.xml
+python study_runner.py --study study_input.json --dblp data/dblp20240707.xml
 ```
 
 The pipeline will process the literature and provide you with a selection of papers filtered based on your inclusion/exclusion criteria.
 
-- **NOTE** You can specify the number of papers to be assessed by using the `--batch_size` flag followed by the desired number. Otherwise the pipeline will attempt processing all papers extracted.
+- **NOTE** You can specify the number of papers to be assessed by using the `--batch` flag followed by the desired number. Otherwise the pipeline will attempt processing papers exhaustively.
 
-- **NOTE** You can resume a pipeline process that was stopped midway by setting the `--resume` flag followed by the directory name in results that you want to resume.
+- **NOTE** You can also specify if you want the final set of papers to be exported using `--export` flag followed by the export level of detail (`complete` OR `overview`)
 
-- **NOTE** You can let the pipeline run on its own by adding the `--auto` flag. (It will not ask for your confirmation on each step)
+### 3. Exported Data (TODO)
 
-### 3. Output
+## Study Flow
+### 1. Paper Scraping and Filtering
+_Implemented in the `PaperFactory` class._
 
-The outputs of each run of the pipeline will be found in the `results` directory.
-The output of your current run will be named based on the current date and the experiment number of today (`<date>_<number>/`).
-In this directory, you will find the output data separated per each pipeline phase along with an experiment overview.
+Summary of the paper extraction sequence
+  - Venue Type Check: Validates if the paper's venue type is accepted.
+  - Year Check: Ensures the publication year is within the specified range.
+  - Title Check: Matches the paper title against the search query.
+  - Metadata Creation: Constructs a ResearchPaper object with initial metadata.
+  - Identifier Addition: Adds DOI and publisher source information.
+  - Venue Information Addition: Includes venue type, code, and rank.
+  - Paper Validation: Validates the paper based on venue key and rank.
+  - Data Fetching: Retrieves additional data like the abstract if needed.
+
+### 2. Automated Paper-Criteria Analysis (TODO)
+_Implemented in the `PaperInterpreter` class._

@@ -1,0 +1,71 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "study_name": {
+        "type": "string"
+      },
+      "research_goal": {
+        "type": "string"
+      },
+      "research_questions": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "inclusion_criteria": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "exclusion_criteria": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "year_min": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "year_max": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "search_word_groups": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "venue_rank_threshold": {
+        "type": "string",
+        "enum": ["A*", "A", "B", "C"]
+      },
+      "accepted_venue_types": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": ["conf", "journals", "workshops", "informal", "phd", "books"]
+        }
+      },
+      "manually_accepted_venue_codes" : {
+        "type": "array",
+        "items": {
+          "type": "string"
+        } 
+      }
+    },
+    "required": [
+      "search_word_groups",
+      "inclusion_criteria",
+      "exclusion_criteria",
+      "year_min",
+      "year_max"
+    ]
+}

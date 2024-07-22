@@ -18,6 +18,11 @@ jsonschema = "^4.22.0"
 semanticscholar = "^0.8.2"
 pydantic = "^2.8.2"
 sqlalchemy = "^2.0.31"
+jupyter = "^1.0.0"
+pytest = "8.0.0"
+lark = "^1.1.9"
+
+[tool.poetry.group.dev.dependencies]
 
 [build-system]
 requires = ["poetry-core"]

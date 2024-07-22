@@ -1,0 +1,41 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "inclusion_criteria_assessments": {
+            "type": "array",
+            "description": "Assessment results for each inclusion criteria.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "assessment": {
+                        "type": "string",
+                        "description": "Description of reasoning behind assessment."
+                    },
+                    "value": {
+                        "type": "boolean",
+                        "description": "Criteria assessment result."
+                    }
+                }
+            }
+        },
+        "exclusion_criteria_assessments": {
+            "type": "array",
+            "description": "Assessment results for each exclusion criteria.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "assessment": {
+                        "type": "string",
+                        "description": "Description of reasoning behind assessment."
+                    },
+                    "value": {
+                        "type": "boolean",
+                        "description": "Criteria assessment result."
+                    }
+                }
+            }
+        }
+    },
+    "required": ["inclusion_criteria_assessments", "exclusion_criteria_assessments"]
+}

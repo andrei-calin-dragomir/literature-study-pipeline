@@ -1,179 +1,153 @@
 import os
-import csv
-import json
-import time
+import argparse
+import traceback
+from dotenv import load_dotenv
 from datetime import datetime
-from utils.text_parsing import solve_cnf
-from semanticscholar import SemanticScholar, Paper
-from utils.file_io import iterate_xml, init_results_dir, init_results_file, load_json_file
-from utils.text_parsing import extract_doi_from_url
-
-STUDY_DESIGN_SCHEMA = {
-  "type": "object",
-  "properties": {
-    "study_name": {
-      "type": "string"
-    },
-    "research_goal": {
-      "type": "string"
-    },
-    "research_questions": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "inclusion_criteria": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "exclusion_criteria": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "year_min": {
-      "type": "integer",
-      "minimum": 0
-    },
-    "year_max": {
-      "type": "integer",
-      "minimum": 0
-    },
-    "search_words": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "venue_codes": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    }
-  },
-  "required": [
-    "study_name",
-    "research_goal",
-    "research_questions",
-    "inclusion_criteria",
-    "exclusion_criteria",
-    "year_min",
-    "year_max",
-    "search_words",
-    "venue_codes"
-  ]
-}
-
-RESULTS_HEADERS = ['id', 'title', 'year', 'authors', 'key', 'link', 'citation_count', 'influential_citation_count',
-                   'abstract', 'tldr', 'is_open_access', 'pdf_link',
-                   'inclusion_res', 'exclusion_res', 'inclusion_comments', 'exclusion_comments']
+from paper_interpreter import PaperInterpreter
+from paper_extraction.factory import Factory
+from paper_extraction.sch_wrapper import SchWrapper
+from database.db_manager import DatabaseManager
+from database.models import Study, StudyInput, Report, CriteriaAssessment, CriteriaType, ContentHeaders, Content
+from utils.json_utils import validate_json
+from typing import List
 
 class StudyRunner:
-    def __init__(self, study_design_path: str, dblp_path: str, output_directory_path: str, api_key: str):
+    def __init__(self, study_input_path: str, dblp_path: str, openai_api_key: str):
         self.start_time = datetime.now()
-        self.sch = SemanticScholar()
 
-        # Store the dblp_path
-        self.dblp_path = dblp_path
-        self.api_key = api_key 
+        self.db = DatabaseManager()
+        self.interpreter = PaperInterpreter(openai_api_key)
 
-        self.results_directory = init_results_dir(output_directory_path)
-        self.results_file = init_results_file(self.results_directory, RESULTS_HEADERS)
-        self.study_design = load_json_file(study_design_path, STUDY_DESIGN_SCHEMA)
+        self.study = Study()
+        self.study.study_date = datetime.now().date()
+        self.study.dblp_used = os.path.basename(dblp_path)
+        self.study.papers_collected, self.study.reports_collected = 0, 0
+        self.db.session.add(self.study)
         
-        
-        self.summary = {'study_design': self.study_design,
-                        'dblp': os.path.basename(self.dblp_path),
-                        'runtime': 0}
-        
+        self.study_input = StudyInput(
+            study=self.study,
+            **validate_json(study_input_path, os.path.join('schemas', 'study_input_schema.json'))
+        )
 
-    @classmethod
-    def reload(cls, old_results_directory: str, api_key: str):
-        instance = cls.__new__(cls)
-        instance.start_time = datetime.now()
-        instance.sch = SemanticScholar()
-        instance.api_key = api_key
-        
-        # Restore all required data
-        instance.results_directory = old_results_directory
-        instance.results_file = os.path.join(old_results_directory, 'results.csv')
-
-        with open(os.path.join(old_results_directory,'summary.csv'), 'r') as file:
-            instance.summary = json.load(file)
-
-        instance.study_design = instance.summary['study_design']
-
-
-        return instance
+        self.paper_collector = Factory(dblp_path, self.study_input)
     
-    def _finalize(self):
-        self.summary['runtime'] = str(self.summary['runtime'] + datetime.now() - self.start_time)
+    # Do all filtering of papers based on initial criteria here
+    # If a paper passes the criteria, it gets saved in the database
+    def run(self, batch_size: int=-1):
+        try:
+            for paper in self.paper_collector.get_papers():
 
-        summary_path = os.path.join(self.results_directory, 'summary.json')
-        with open(summary_path, 'w', newline='') as file:
-            json.dump(self.summary, file, indent=4)
+                paper.study = self.study
+                self.db.session.add(paper)
+                content, metrics = self.paper_collector.sch.add_semantic_scholar_data(paper)
+                if not content.abstract: content.abstract = self.paper_collector.web_scraper.get_abstract(paper.publisher_source)
 
-    # This function collects papers related to the study
-    def gather_papers(self, batch_size):
-        index = 0
-        search_query = " AND ".join(self.study_design['search_words'])
+                self.db.session.add(content)
+                self.db.session.add(metrics)
+
+                self.study.papers_collected += 1
+                
+                # Start the report on the paper
+                report = Report(paper = paper)
+                self.db.session.add(report)
+
+                # Extract inclusion/exclusion criteria assessments
+                crit_assessment_corpora = self.format_content_sections(paper.content, 
+                                                                       [ContentHeaders.tldr, ContentHeaders.abstract])
+                
+                criteria_assessments : List[CriteriaAssessment] = self.interpreter.get_criteria_assessments(crit_assessment_corpora, 
+                                                                                                            list(self.study_input.inclusion_criteria), 
+                                                                                                            list(self.study_input.exclusion_criteria)
+                                                                                                            )
+                if criteria_assessments:
+                    for ca in criteria_assessments: ca.report = report
+                    self.db.session.add_all(criteria_assessments)
+                    report.passed_criteria = self.check_criteria_assessments(criteria_assessments)
+
+                self.study.reports_collected += 1
+
+                # TODO Research question assessments
+                # rq_assessment_corpora = paper.content.get_formatted_content()
+                # report.research_question_assessments = None
+                if self.study.papers_collected == batch_size: break
+            print(f"New papers found: {self.study.papers_collected}")
+        finally:
+            self.study.total_runtime = (datetime.now() - self.start_time).total_seconds()
+            self.finalize_session()
+    
+    @staticmethod
+    def check_criteria_assessments(criteria_assessments: List[CriteriaAssessment]) -> bool:
+        # Check if all inclusion criteria have fulfilled == True
+        if not all(ca.fulfilled for ca in criteria_assessments if ca.type == CriteriaType.inclusion):
+            return False
         
-        with open(self.results_file, 'w', newline='', encoding='utf-8') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=RESULTS_HEADERS)
+        # Check if all exclusion criteria have fulfilled == False
+        if any(ca.fulfilled for ca in criteria_assessments if ca.type == CriteriaType.exclusion):
+            return False
+        return True
+    
+    def format_content_sections(self, content: Content, sections: list[ContentHeaders]=None) -> str:
+        section_contents = []
+        if sections: sections.sort(key=lambda x: x.value)
+        else: sections = list[ContentHeaders]
 
-            # Parse all entries in the DBLP database.
-            for dblp_entry in iterate_xml(self.dblp_path):
-                key = dblp_entry.get('key')
-                result = {}
-                try:
-                    if (key.startswith(tuple(self.study_design['venue_codes'])) and
-                        int(dblp_entry.find('year').text) >= int(self.study_design['year_min']) and
-                        int(dblp_entry.find('year').text) <= int(self.study_design['year_max'])):
-                        
-                        title = ''.join(dblp_entry.find('title').itertext())
-                        
-                        if solve_cnf(title, search_query):
-                            authors = ' & '.join(''.join(author.itertext()) for author in
-                                                dblp_entry.findall('author'))
-                            
-                            ee = dblp_entry.find('ee')
-                            if ee is not None:
-                                ee = ee.text
-                                
-                            result.update({
-                                'id': index,
-                                'title': title.replace(',', ';'),
-                                'year': dblp_entry.find('year').text,
-                                'authors': authors,
-                                'key': key,
-                                'link': ee
-                            })
+        for section in sections:
+            section_name = section.name.lower()
+            if hasattr(content, section_name):
+                section_contents.append(f"{section_name}:\n{getattr(content, section_name)}\n")
 
-                            if ee:
-                                doi = extract_doi_from_url(ee)
-                                extra_info = self.sch.get_paper(doi, 
-                                                                fields=['abstract', 'citationCount', 'influentialCitationCount', 'isOpenAccess', 'openAccessPdf', 'tldr'])
-                                result.update({
-                                    'tldr' : extra_info.tldr['text'] if extra_info.tldr else extra_info.tldr,
-                                    'abstract' : extra_info.abstract,
-                                    'citation_count' : extra_info.citationCount,
-                                    'influential_citation_count' : extra_info.influentialCitationCount,
-                                    'is_open_access' : extra_info.isOpenAccess,
-                                    'pdf_link' : extra_info.openAccessPdf
-                                })
-                            
-                            # Write the result to the CSV file
-                            writer.writerow(result)
-                            index += 1
-                            if index == batch_size: break
+        return '\n'.join(section_contents)
 
-                except AttributeError as e:
-                    print(e)
+    def finalize_session(self):
+        # Commit the session
+        try:
+            self.db.session.commit()
+            print('All data successfully commited.')
+            self.db.session.close()
+            print('Database session closed.')
+        except Exception as e:
+            self.db.session.rollback()
+            print(traceback.format_exc())
 
-        self.summary['paper_collection_size'] = index
-        return index
+if __name__ == "__main__":
+    load_dotenv()
+
+    try:
+        parser = argparse.ArgumentParser(description="Process the study design pipeline with various options.")
+        parser.add_argument('--study', type=str, help='The path to the study input to be used <json>.')
+        parser.add_argument('--dblp', type=str, help='The path to the dblp to be used <xml>.')
+        parser.add_argument('--batch', type=int, help='Number of papers to process in current run.')
+        parser.add_argument('--openai_key', type=str, help='Provide the OpenAI key for automated reports.')
+        parser.add_argument('--export_all', action='store_true', default=False, help='Export all study data into a csv file.')
+        parser.add_argument('--export_summary', action='store_true', default=False, help='Export some study data into a csv file.')
+
+
+        args = parser.parse_args()
+
+        # Parse run arguments
+        if not args.study or not args.dblp:
+            print('For a new run, both a study as well as a dblp file need to be specified')
+            exit(0)
+        elif not os.path.exists(args.study):
+            print(f"Study design file not found on path {args.study}")
+            exit(0)
+        elif not os.path.exists(args.dblp):
+            print(f"Dblp file not found on path {args.dblp}")
+            exit(0)
+        # elif not args.openai_key and not os.getenv('OPENAI_API_KEY'):
+        #     print(f"Automatic reporting not possible. API key not provided.")
+        #     exit(0)
+        
+
+        study = StudyRunner(args.study, args.dblp, args.openai_key if args.openai_key else os.getenv('OPENAI_API_KEY'))
+        study.run(args.batch) if args.batch else study.run()
+
+        # TODO EXport data to csv depending on flags provided
+        if args.export_all:
+            pass
+        
+        if args.export_summary:
+            pass
+
+    except Exception as e:
+        print(traceback.format_exc())
