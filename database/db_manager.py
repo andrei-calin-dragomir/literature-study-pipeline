@@ -32,9 +32,9 @@ class DatabaseManager:
         | Total Entries: {self.session.query(table_class).count()} 
         | Entry attributes: {[k for k, v in table_class.__dict__.items() if not callable(v) and not k.startswith('_')]}'''
 
-    def show_studies_of_date(self, study_date: date=None) -> List[str]:
+    def show_studies_of_date(self, study_date: str=None) -> List[str]:
         studies = []
-        for study in self.session.query(Study).filter(Study.study_date == (study_date if study_date else datetime.now().date())):
+        for study in self.session.query(Study).filter(str(Study.study_date) == (study_date if study_date else str(datetime.now().date()))):
             studies.append(f"Date {study.study_date} | ID: {study.id} | Papers: {study.papers_collected} | Reports: {study.reports_collected}")
         return studies
 
@@ -59,8 +59,8 @@ class DatabaseManager:
     def get_all_papers(self) -> List[Paper]:
         return self.session.query(Paper).all()
     
-    def get_paper_report(self, study_id: str, paper_id: str) -> Optional[Report]:
-        return self.session.query(Report).filter(Report.paper_id == paper_id and Report.study_id == study_id).one_or_none()
+    def get_paper_report(self, paper_id: str) -> Optional[Report]:
+        return self.session.query(Report).filter(Report.paper_id == paper_id).one_or_none()
     
     def get_report_criteria_assessments(self, criteria_type: Optional[CriteriaType], report_id: str) -> Optional[List[CriteriaAssessment]]:
         return self.session.query(CriteriaAssessment).filter((CriteriaAssessment.type == criteria_type if criteria_type else None) 
