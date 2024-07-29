@@ -19,8 +19,9 @@ cd literature-study-pipeline
 
 Install the project using Poetry:
 ```bash
-pip install poetry #If not installed previously
-
+pip install poetry #If poetry not installed previously
+```
+```bash
 poetry install
 ```
 
