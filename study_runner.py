@@ -40,39 +40,42 @@ class StudyRunner:
 
                 paper.study = self.study
                 self.db.session.add(paper)
-                content, metrics = self.paper_collector.sch.add_semantic_scholar_data(paper)
-                if not content.abstract: content.abstract = self.paper_collector.web_scraper.get_abstract(paper.publisher_source)
+                try:
+                    content, metrics = self.paper_collector.sch.add_semantic_scholar_data(paper)
+                    if not content.abstract: content.abstract = self.paper_collector.web_scraper.get_abstract(paper.publisher_source)
 
-                self.db.session.add(content)
-                self.db.session.add(metrics)
+                    self.db.session.add(content)
+                    self.db.session.add(metrics)
+
+                    # Start the report on the paper
+                    report = Report(paper = paper)
+                    self.db.session.add(report)
+
+                    # Extract inclusion/exclusion criteria assessments
+                    crit_assessment_corpora = self.format_content_sections(content, 
+                                                                        [ContentHeaders.tldr, ContentHeaders.abstract])
+                    
+                    criteria_assessments : List[CriteriaAssessment] = self.interpreter.get_criteria_assessments(crit_assessment_corpora, 
+                                                                                                                list(self.study_input.inclusion_criteria), 
+                                                                                                                list(self.study_input.exclusion_criteria)
+                                                                                                                )
+                    if criteria_assessments:
+                        for ca in criteria_assessments: ca.report = report
+                        self.db.session.add_all(criteria_assessments)
+                        report.passed_criteria = self.check_criteria_assessments(criteria_assessments)
+
+                    # TODO Research question assessments
+                    # rq_assessment_corpora = paper.content.get_formatted_content()
+                    # report.research_question_assessments = None
+
+                    self.study.reports_collected += 1
+                except Exception as e:
+                    print(e)
 
                 self.study.papers_collected += 1
-                
-                # Start the report on the paper
-                report = Report(paper = paper)
-                self.db.session.add(report)
-
-                # Extract inclusion/exclusion criteria assessments
-                crit_assessment_corpora = self.format_content_sections(paper.content, 
-                                                                       [ContentHeaders.tldr, ContentHeaders.abstract])
-                
-                criteria_assessments : List[CriteriaAssessment] = self.interpreter.get_criteria_assessments(crit_assessment_corpora, 
-                                                                                                            list(self.study_input.inclusion_criteria), 
-                                                                                                            list(self.study_input.exclusion_criteria)
-                                                                                                            )
-                if criteria_assessments:
-                    for ca in criteria_assessments: ca.report = report
-                    self.db.session.add_all(criteria_assessments)
-                    report.passed_criteria = self.check_criteria_assessments(criteria_assessments)
-
-                self.study.reports_collected += 1
-
-                # TODO Research question assessments
-                # rq_assessment_corpora = paper.content.get_formatted_content()
-                # report.research_question_assessments = None
                 if self.study.papers_collected == batch_size: break
-            print(f"New papers found: {self.study.papers_collected}")
         finally:
+            print(f"New papers found: {self.study.papers_collected}")
             self.study.total_runtime = (datetime.now() - self.start_time).total_seconds()
             self.finalize_session()
     

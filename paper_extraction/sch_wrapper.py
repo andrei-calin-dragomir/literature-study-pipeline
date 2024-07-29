@@ -22,8 +22,8 @@ class SchWrapper:
         self.sch = SemanticScholar()
 
     @delay_api_call(1)
-    def add_semantic_scholar_data(self, paper_entry: Paper) -> Tuple[Content, Metrics]:
-        data = self.sch.get_paper(paper_entry.doi if paper_entry.doi else paper_entry.semantic_scholar_id, 
+    def add_semantic_scholar_data(self, paper_entry: Paper) -> Tuple[Content, Metrics]:  
+        data = self.sch.get_paper(paper_entry.semantic_scholar_id if paper_entry.semantic_scholar_id else paper_entry.doi, 
                 fields=['isOpenAccess', 'openAccessPdf', 
                         'citationCount', 'influentialCitationCount',
                         'abstract', 'tldr'])
