@@ -34,7 +34,6 @@ Create a study file (e.g., `study_input.json`) with the following entries:
 |-------------------------------|------------|-------------------------------------------------------------|-------------|
 | study_name                    | str        | The name of the study.                                      |**MANDATORY**|
 | inclusion_criteria            | [str]      | Criteria for including a paper in the study.                |**MANDATORY**|
-| exclusion_criteria            | [str]      | Criteria for excluding a paper from the study.              |**MANDATORY**|
 | year_min                      | int        | Earliest year of publication for the papers to be included. |**MANDATORY**|
 | year_max                      | int        | Latest year of publication for the papers to be included.   |**MANDATORY**|
 | search_word_groups            | [str]      | Search term sets used to find relevant papers.              |**MANDATORY**|

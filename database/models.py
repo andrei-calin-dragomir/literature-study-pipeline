@@ -4,10 +4,6 @@ from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
 
-class CriteriaType(enum.Enum):
-    inclusion = 'inclusion'
-    exclusion = 'exclusion'
-
 class ContentHeaders(enum.Enum):
     tldr = 0
     title = 1
@@ -17,6 +13,15 @@ class ContentHeaders(enum.Enum):
     results = 5
     discussion = 6
     references = 7
+
+class LickertScale(enum.Enum):
+    _1 = "strongly_disagree"
+    _2 = "disagree"
+    _3 = "somewhat_disagree"
+    _4 = "neither_agree_or_disagree"
+    _5 = "somewhat_agree"
+    _6 = "agree"
+    _7 = "strongly_agree"
 
 class VenueRank(enum.Enum):
     MISSING = 0
@@ -155,10 +160,8 @@ class CriteriaAssessment(Base):
 
     report_id = Column(Integer, ForeignKey('reports.id'), nullable=False)
 
-    type = Column(Enum(CriteriaType), nullable=False)
-    fulfilled = Column(Boolean, nullable=False)
+    lickert_value = Column(Enum(LickertScale), nullable=False)
     criteria = Column(Text, nullable=False)
-    reason = Column(Text, nullable=False)
     
     report = relationship("Report", back_populates="criteria_assessments")
 

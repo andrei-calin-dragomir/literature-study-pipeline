@@ -10,21 +10,20 @@
     ],
     "inclusion_criteria": [
         "Study is written in English",
-        "Must contain methods that orchestrate containers",
+        "Presents at least one method that orchestrates containers",
         "The method(s) used must take into account measurements and/or predictions",
-        "Study contains an empirical evaluation of the policies presented"
-    ],
-    "exclusion_criteria": [
-        "Methods presented are orchestrating VMs or containers deployed within VMs",
-        "The method does not produce policies that optimize performance resource-wise"
+        "Study contains an empirical evaluation of the policies presented",
+        "Method(s) presented do not orchestrate containers within virtual machines (VMs)",
+        "The method(s) presented produce performance and/or energy efficiency optimizations"
     ],
     "year_min": 2019,
     "year_max": 2024,
     "search_word_groups": [
-        ["microservice", "service", "container", "distributed", "kubernetes", "docker"],
+        ["kubernetes", "docker", "distributed", "application"],
+        ["microservice", "service", "container"],
         ["cluster", "orchestrat", "migrat", "scal", "load", "balanc"],
-        ["method", "approach", "model", "algorithm"],
-        ["performance", "energy", "resource"]
+        ["method", "approach", "model", "algorithm", "policy"],
+        ["performance", "energy", "resource", "efficien"]
     ],
     "venue_rank_threshold" : "B",
     "accepted_venue_types": [
