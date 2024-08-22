@@ -3,7 +3,7 @@ import traceback
 from sqlalchemy.orm import sessionmaker
 from typing import List, Optional, Type
 from sqlalchemy import create_engine, cast
-from database.models import Base, Paper, Content, ContentHeaders, Metrics, Study, Report, CriteriaAssessment, CriteriaType
+from database.models import Base, Paper, Content, ContentHeaders, Metrics, Study, Report, CriteriaAssessment, LickertScale
 from sqlalchemy.orm import DeclarativeBase
 
 class DatabaseManager:
@@ -62,9 +62,8 @@ class DatabaseManager:
     def get_paper_report(self, paper_id: str) -> Optional[Report]:
         return self.session.query(Report).filter(Report.paper_id == paper_id).one_or_none()
     
-    def get_report_criteria_assessments(self, criteria_type: Optional[CriteriaType], report_id: str) -> Optional[List[CriteriaAssessment]]:
-        return self.session.query(CriteriaAssessment).filter((CriteriaAssessment.type == criteria_type if criteria_type else None) 
-                                                              and CriteriaAssessment.report_id == report_id).all()
+    def get_report_criteria_assessments(self, report_id: str) -> Optional[List[CriteriaAssessment]]:
+        return self.session.query(CriteriaAssessment).filter(CriteriaAssessment.report_id == report_id).all()
 
     # Checks if the paper is already in the db and return it for populating or keep the current paper
     def load_local_paper(self, paper : Paper) -> Paper:
