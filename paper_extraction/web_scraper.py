@@ -1,13 +1,14 @@
 import time
 from bs4 import BeautifulSoup
-from database.models import VenueRank
-from utils.text_parsing_utils import extract_long_text, clean_text
-from selenium.webdriver import Firefox 
+from database.models import VenueRank, Paper
+from selenium.webdriver import Firefox, FirefoxService
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import WebDriverException, InvalidArgumentException
+from typing import List
+import re
 
 class WebScraper:
     def __init__(self):
@@ -15,10 +16,25 @@ class WebScraper:
         firefox_options = Options()
         firefox_options.add_argument("--headless") # browser in background
         firefox_options.add_argument('--disable-blink-features=AutomationControlled')
-
-        self.driver = Firefox(options=firefox_options)
+        serv = FirefoxService(executable_path='/snap/bin/geckodriver')
+        self.driver = Firefox(options=firefox_options, service=serv)
         self.driver.set_window_size(1920, 1080)
 
+    def clean_text(string : str) -> str:
+        output = ''
+        try:
+            output = string.strip().replace('\n', '')
+        except AttributeError as e:
+            return ''
+        return output
+
+    def extract_long_text(text : str, max_paragraph_len : int) -> List[str]:
+        paragraphs = re.split(r'\n\n+', text)
+        long_paragraphs = [
+            p for p in paragraphs if len(p.split()) > max_paragraph_len
+        ]
+        return long_paragraphs
+    
     def get_full_page_source(self, url : str):
         current_url, page_source = "", "" 
         try:
@@ -32,6 +48,12 @@ class WebScraper:
         except WebDriverException:
             print("Redirection Error")
         return current_url, page_source
+    
+    def add_venue_ranking_info(self, paper: Paper):
+        if paper.venue_type == 'conf':
+            paper.venue_rank = self.get_conference_rank(paper.venue_code)
+        elif paper.venue_type == 'journals':
+            paper.venue_rank = self.get_journal_rank(paper.venue_code)
 
     def get_conference_rank(self, venue_code: str) -> VenueRank:
         url_template = "https://portal.core.edu.au/conf-ranks/?search={}&by=acronym&source=CORE2023&sort=arank&page=1"
@@ -99,6 +121,7 @@ class WebScraper:
             return self._get_text_by_id(html_source, 'Abs1-content')
 
         return self._get_possible_abstract(html_source)
+    
 
     def _get_possible_abstract(self, html_source):
         soup = BeautifulSoup(html_source, 'html.parser')
@@ -108,8 +131,8 @@ class WebScraper:
         for script in soup(["script", "style", "ul", "li"]):
             script.decompose()
 
-        text_chunks = extract_long_text(soup.text, 200)
-        abstract = clean_text("".join(text_chunks))
+        text_chunks = self.extract_long_text(soup.text, 200)
+        abstract = self.clean_text("".join(text_chunks))
 
         index = abstract.lower().find('abstract')
         if index != -1:
@@ -121,7 +144,7 @@ class WebScraper:
         soup = BeautifulSoup(html_source, 'html.parser')
         abstract = soup.find(id=item_id)
         if abstract:
-            return clean_text(abstract.text) 
+            return self.clean_text(abstract.text) 
         return ''
 
     def _get_ieee_abstract(self, html_source):

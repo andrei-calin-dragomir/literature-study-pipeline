@@ -51,8 +51,8 @@ class Study(Base):
     study_date = Column(Date, nullable=False)
     dblp_used = Column(String, nullable=False)
 
-    papers_collected = Column(Integer, nullable=False)
-    reports_collected = Column(Integer, nullable=True)
+    papers_collected = Column(Integer, default=0)
+    reports_collected = Column(Integer, default=0)
 
     total_tokens_used_llm = Column(Integer, nullable=True)
     total_runtime = Column(Float, default=0.0)  # in seconds
@@ -70,7 +70,6 @@ class StudyInput(Base):
     year_min = Column(Integer, nullable=False)
     year_max = Column(Integer, nullable=False)
     inclusion_criteria = Column(JSON, nullable=False)
-    exclusion_criteria = Column(JSON, nullable=False)
     search_word_groups = Column(JSON, nullable=False)
 
     study_name = Column(String, nullable=True)

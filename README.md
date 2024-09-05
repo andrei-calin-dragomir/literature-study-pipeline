@@ -57,19 +57,94 @@ Add your OpenAI API key in the `.env` file.
 poetry shell
 ```
 
+#### Command Line Arguments for Study Runner
+
+The study_runner.py script accepts several command line arguments that allow you to customize the study pipeline. Below are the flags and their descriptions:
+
+**Required Arguments:**
+
+`--study <json>`
+- Description: The path to the study input file in JSON format.
+- Example:
+
+```bash
+python study_runner.py --study path/to/study_input.json
+```
+
+`--dblp <xml>`
+- Description: The path to the DBLP XML file. This file contains the metadata of papers to be processed.
+- Example:
+
+```bash
+python study_runner.py --dblp path/to/dblp.xml
+```
+
+**Optional Arguments:**
+
+`--batch <int>`
+- Description: Number of papers to process in the current run. If not specified, the script will process all papers.
+- Example:
+
+```bash
+python study_runner.py --batch 100
+```
+
+**Flags for Module Execution:**
+
+`--collect_content`
+- Description: Flag to collect content for papers. By default, this option is disabled. Use `--collect_content` to enable content collection if needed.
+- Example (enable content collection):
+
+```bash
+python study_runner.py --collect_content
+```
+
+`--generate_report`
+- Description: Flag to generate reports for the processed papers using an LLM (OpenAI). By default, this option is diabled. Use `--generate_report` to enable report generation if needed.
+- Example (disable report generation):
+
+```bash
+python study_runner.py --generate_report
+```
+
+**Export Options:**
+
+`--export_all`
+- Description: Export all study data into a CSV file after processing.
+- Example:
+
+```bash
+python study_runner.py --export_all
+```
+
+`--export_summary`
+- Description: Export a summary of the study data into a CSV file after processing.
+- Example:
+
+```bash
+python study_runner.py --export_summary
+```
+
+#### Example Usage
+
+To run the script with specific flags:
+
+```bash
+python study_runner.py --study path/to/study_input.json --dblp path/to/dblp.xml --batch 100 --collect_content --generate_report --export_summary
+```
+
+This will process 100 papers, collect content, generate reports, and export a summary of the study data into a CSV file.
 Execute the main script with your study file and dblp of choice:
 
 ```bash
 python study_runner.py --study study_input.json --dblp data/dblp20240707.xml
 ```
 
-The pipeline will process the literature and provide you with a selection of papers filtered based on your inclusion/exclusion criteria.
+The pipeline will process the literature and provide you with a selection of papers extracted from DBLP with no rank evaluation.
 
 - **NOTE** You can specify the number of papers to be assessed by using the `--batch` flag followed by the desired number. Otherwise the pipeline will attempt processing papers exhaustively.
 
 - **NOTE** You can also specify if you want the final set of papers to be exported using `--export` flag followed by the export level of detail (`complete` OR `overview`)
-
-### 3. Exported Data (TODO)
 
 ## Study Flow
 ### 1. Paper Scraping and Filtering

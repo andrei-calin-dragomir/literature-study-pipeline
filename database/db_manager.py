@@ -32,6 +32,12 @@ class DatabaseManager:
         | Total Entries: {self.session.query(table_class).count()} 
         | Entry attributes: {[k for k, v in table_class.__dict__.items() if not callable(v) and not k.startswith('_')]}'''
 
+    def show_studies(self) -> List[str]:
+        studies = []
+        for study in self.session.query(Study):
+            studies.append(f"Date {study.study_date} | ID: {study.id} | Papers: {study.papers_collected} | Reports: {study.reports_collected}")
+        return studies
+    
     def show_studies_of_date(self, study_date: str=None) -> List[str]:
         studies = []
         for study in self.session.query(Study).filter(str(Study.study_date) == (study_date if study_date else str(datetime.now().date()))):
