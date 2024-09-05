@@ -19,11 +19,11 @@
     "year_min": 2019,
     "year_max": 2024,
     "search_word_groups": [
-        ["kubernetes", "docker", "distributed", "application"],
-        ["microservice", "service", "container"],
-        ["cluster", "orchestrat", "migrat", "scal", "load", "balanc"],
-        ["method", "approach", "model", "algorithm", "policy"],
-        ["performance", "energy", "resource", "efficien"]
+        ["container", "orchestrat", "manage", "task"],
+        ["resource", "allocat", "optimiz", "utiliz", "efficien"],
+        ["energy", "aware", "optimiz", "efficien", "performance", "green"],
+        ["hybrid", "cloud", "edge", "distributed", "decentralized", "system"],
+        ["method", "approach", "model", "algorithm", "policy", "migrat", "scal", "load", "balanc", "schedul", "provision"]
     ],
     "venue_rank_threshold" : "B",
     "accepted_venue_types": [
