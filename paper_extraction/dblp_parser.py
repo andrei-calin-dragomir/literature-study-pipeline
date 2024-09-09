@@ -12,7 +12,7 @@ class DBLPParser:
         self.search_query = ' AND '.join(f"({' OR '.join(set(search_group))})" for search_group in study_input.search_word_groups)
 
     def get_papers(self) -> Generator[Paper, None, None]:        
-        for dblp_entry in self.iterate_xml(self.dblp_file):
+        for dblp_entry in self.iterate_xml():
             key = dblp_entry.get('key')
             
             if self.is_valid_venue_type(key):
@@ -43,8 +43,8 @@ class DBLPParser:
     # Iterate over a large-sized xml file without the need to store it in memory in
     # full. Yields every next element. Source:
     # https://stackoverflow.com/questions/9856163/using-lxml-and-iterparse-to-parse-a-big-1gb-xml-file
-    def iterate_xml(xmlfile):
-        doc = etree.iterparse(xmlfile, events=('start', 'end'), load_dtd=True)
+    def iterate_xml(self):
+        doc = etree.iterparse(self.dblp_file, events=('start', 'end'), load_dtd=True)
         _, root = next(doc)
         start_tag = None
 
@@ -56,6 +56,7 @@ class DBLPParser:
                 start_tag = None
                 root.clear()
 
+    @staticmethod
     def solve_or(test_string: str, boolean_expression: str):
         # Solves Atomic Disjunctions
         # the boolean expression should be written as a combination of
@@ -65,6 +66,7 @@ class DBLPParser:
             literal.strip().lower() in test_string.lower() for literal in literals
         )
 
+    @staticmethod
     def solve_and(test_string: str, boolean_expression: str):
         # Solves Atomic Conjunctions
         # the boolean expression should be written as a combination of
@@ -88,6 +90,7 @@ class DBLPParser:
             return self.solve_and(test_string, boolean_expression)
         return False
     
+    @staticmethod
     def get_text_inside_parens(text: str) -> list:
         """
         Function that extracts the text within parentheses from a string
@@ -97,6 +100,7 @@ class DBLPParser:
         matches = re.findall(r'\(([^)]+)\)', text)
         return list(map(str.strip, matches))
 
+    @staticmethod
     def extract_doi_from_url(url):
         # Regular expression to match the DOI pattern
         doi_pattern = r'10\.\d{4,9}/[-._;()/:A-Z0-9]+'

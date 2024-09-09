@@ -48,12 +48,6 @@ class WebScraper:
         except WebDriverException:
             print("Redirection Error")
         return current_url, page_source
-    
-    def add_venue_ranking_info(self, paper: Paper):
-        if paper.venue_type == 'conf':
-            paper.venue_rank = self.get_conference_rank(paper.venue_code)
-        elif paper.venue_type == 'journals':
-            paper.venue_rank = self.get_journal_rank(paper.venue_code)
 
     def get_conference_rank(self, venue_code: str) -> VenueRank:
         url_template = "https://portal.core.edu.au/conf-ranks/?search={}&by=acronym&source=CORE2023&sort=arank&page=1"

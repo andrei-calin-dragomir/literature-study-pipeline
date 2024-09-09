@@ -137,7 +137,7 @@ This will process 100 papers, collect content, generate reports, and export a su
 Execute the main script with your study file and dblp of choice:
 
 ```bash
-python study_runner.py --study study_input.json --dblp data/dblp20240707.xml
+python study_runner.py --study study_input.json --dblp dblp20240909.xml
 ```
 
 The pipeline will process the literature and provide you with a selection of papers extracted from DBLP with no rank evaluation.

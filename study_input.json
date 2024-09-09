@@ -20,10 +20,9 @@
     "year_max": 2024,
     "search_word_groups": [
         ["container", "orchestrat", "manage", "task"],
-        ["resource", "allocat", "optimiz", "utiliz", "efficien"],
-        ["energy", "aware", "optimiz", "efficien", "performance", "green"],
-        ["hybrid", "cloud", "edge", "distributed", "decentralized", "system"],
-        ["method", "approach", "model", "algorithm", "policy", "migrat", "scal", "load", "balanc", "schedul", "provision"]
+        ["allocat", "optimiz", "utiliz", "efficien", "method", "approach", "model", "algorithm", "policy", "migrat", "scal", "load", "balanc", "schedul", "provision"],
+        ["resource", "energy", "aware", "optimiz", "efficien", "performance", "green"],
+        ["hybrid", "cloud", "edge", "distributed", "decentralized", "system"]
     ],
     "venue_rank_threshold" : "B",
     "accepted_venue_types": [

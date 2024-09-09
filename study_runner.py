@@ -7,6 +7,7 @@ from paper_interpreter import PaperInterpreter
 from paper_extraction.sch_wrapper import SchWrapper
 from paper_extraction.dblp_parser import DBLPParser
 from paper_extraction.web_scraper import WebScraper
+from paper_extraction.http_requests import get_conference_rank, get_journal_rank
 from database.db_manager import DatabaseManager
 from database.models import Study, StudyInput, Report, CriteriaAssessment, ContentHeaders, Content, Paper, VenueRank
 from utils.json_utils import validate_json
@@ -14,8 +15,10 @@ from typing import List
 import csv
 
 class StudyRunner:
-    def __init__(self, study_input_path: str, dblp_path: str, openai_api_key: str):
+    def __init__(self, study_input_path: str, dblp_path: str, openai_api_key: str, collect_content: bool=False, generate_report: bool=False):
         self.start_time = datetime.now()
+        self.collect_content = collect_content
+        self.generate_report = generate_report
 
         self.db = DatabaseManager()
 
@@ -32,8 +35,8 @@ class StudyRunner:
         self.db.session.add(self.study_input)
 
         self.paper_collector = DBLPParser(dblp_path, self.study_input)
-        self.interpreter = PaperInterpreter(openai_api_key)
-        self.web_scraper = WebScraper()
+        if self.collect_content: self.web_scraper = WebScraper()
+        if self.generate_report: self.interpreter = PaperInterpreter(openai_api_key)
         self.sch_api = SchWrapper()
 
         self.accepted_venues_set = set(self.study_input.manually_accepted_venue_codes)
@@ -41,12 +44,16 @@ class StudyRunner:
     
     # Do all filtering of papers based on initial criteria here
     # If a paper passes the criteria, it gets saved in the database
-    def run(self, batch_size: int=-1, collect_content: bool=False, generate_report: bool=False) -> Study:
+    def run(self, batch_size: int=-1):
         try:
             for paper in self.paper_collector.get_papers():
                 self.add_paper_identifiers(paper)
                 paper.venue_rank = self.local_venue_rank_dict.get(paper.venue_code)
-                if paper.venue_rank is None: self.web_scraper.add_venue_ranking_info(paper)
+                if paper.venue_rank is None: 
+                    try:
+                        self.add_venue_ranking_info(paper)
+                    except:
+                        paper.venue_rank = VenueRank.MISSING
                 self.local_venue_rank_dict[paper.venue_code] = paper.venue_rank
 
                 # Check if publishing venue of the paper is valid
@@ -55,7 +62,7 @@ class StudyRunner:
                     self.db.session.add(paper)
                     print("I got paper data")
 
-                    if collect_content:
+                    if self.collect_content:
                         try:
                             content, metrics = self.sch_api.add_semantic_scholar_data(paper)
                             if not content.abstract:
@@ -66,7 +73,7 @@ class StudyRunner:
                         except Exception as e:
                             print(f"Error in content collection: {e}")
 
-                    if generate_report:
+                    if self.generate_report:
                         try:
                             report = Report(paper=paper)
                             self.db.session.add(report)
@@ -93,7 +100,7 @@ class StudyRunner:
         finally:
             print(f"New papers found: {self.study.papers_collected}")
             self.study.total_runtime = (datetime.now() - self.start_time).total_seconds()
-            return self.finalize_session()
+
 
     def format_content_sections(self, content: Content, sections: list[ContentHeaders]=None) -> str:
         section_contents = []
@@ -111,7 +118,13 @@ class StudyRunner:
     def add_paper_identifiers(self, paper: Paper):
         if paper.doi is None:
             self.sch_api.get_paper_identifiers(paper)
-    
+
+    def add_venue_ranking_info(self, paper: Paper):
+        if paper.venue_type == 'conf':
+            paper.venue_rank = get_conference_rank(paper.venue_code)
+        elif paper.venue_type == 'journals':
+            paper.venue_rank = get_journal_rank(paper.venue_code)
+
     def is_valid_rank(self, rank : VenueRank) -> bool:
         if self.study_input.venue_rank_threshold is None:
             return True
@@ -155,10 +168,10 @@ if __name__ == "__main__":
             print(f"Dblp file not found on path {args.dblp}")
             exit(0)
 
-        study_run = StudyRunner(args.study, args.dblp, os.getenv('OPENAI_API_KEY'))
+        study_run = StudyRunner(args.study, args.dblp, os.getenv('OPENAI_API_KEY'), collect_content=args.collect_content, generate_report=args.generate_report)
         
         # Run content collection and/or report generation based on flags
-        study_id = study_run.run(args.batch, collect_content=args.collect_content, generate_report=args.generate_report)
+        study_id = study_run.run(args.batch)
 
         # Export data to CSV if specified
         if args.export_all:
@@ -168,7 +181,9 @@ if __name__ == "__main__":
 
                 for item in study_run.db.get_study_papers(study_id):
                     out.writerow([getattr(item, column.name) for column in Paper.__table__.columns])
-        
+
+        study_run.finalize_session()
+
         # TODO
         if args.export_summary:
             pass
